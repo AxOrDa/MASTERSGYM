@@ -1,0 +1,235 @@
+﻿@page "/pagos/create"
+@page "/pagos/edit/{Id:int}"
+@inject GimnasioContext Db
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<h3>@(IsEdit ? "Editar Pago" : "Registrar Pago")</h3>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+@if (cargando)
+{
+    <p>Cargando...</p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-8">
+            <EditForm Model="pago" OnValidSubmit="Guardar">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <label class="form-label">Cliente</label>
+                    <InputSelect class="form-control" @bind-Value="pago.IdCliente" @bind-Value:after="OnClienteSeleccionado">
+                        <option value="0">-- Seleccione un cliente --</option>
+                        @if (clientes != null)
+                        {
+                            @foreach (var c in clientes)
+                            {
+                                <option value="@c.IdCliente">@c.Nombre @c.Apellido - @c.Correo</option>
+                            }
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Tipo de Membresía</label>
+                    <InputSelect class="form-control" @bind-Value="pago.TipoMembresia" @bind-Value:after="OnTipoMembresiaSeleccionado">
+                        <option value="">-- Seleccione tipo --</option>
+                        <option value="Mensual">Mensual</option>
+                        <option value="Anual">Anual</option>
+                        <option value="Por Clase">Por Clase</option>
+                    </InputSelect>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Monto</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <InputNumber class="form-control" @bind-Value="pago.Monto" step="0.01" />
+                    </div>
+                    <small class="text-muted">Sugerencias: Mensual $500, Anual $5,000, Por Clase $100</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Fecha de Pago</label>
+                    <InputDate class="form-control" @bind-Value="pago.FechaPago" />
+                </div>
+
+                <button type="submit" class="btn btn-success me-2">Guardar</button>
+                <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+            </EditForm>
+        </div>
+
+        <!-- Panel de información del cliente -->
+        @if (clienteSeleccionado != null)
+        {
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5>Información del Cliente</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Nombre:</strong> @clienteSeleccionado.Nombre @clienteSeleccionado.Apellido</p>
+                        <p><strong>Correo:</strong> @clienteSeleccionado.Correo</p>
+                        <p><strong>Teléfono:</strong> @clienteSeleccionado.Telefono</p>
+                        <p><strong>Registrado:</strong> @clienteSeleccionado.FechaRegistro.ToString("dd/MM/yyyy")</p>
+
+                        @if (pagosCliente != null && pagosCliente.Any())
+                        {
+                            <hr />
+                            <h6>Historial de Pagos</h6>
+                            <p><strong>Total pagado:</strong> <span class="text-success">$@pagosCliente.Sum(p => p.Monto).ToString("N2")</span></p>
+                            <p><strong>Número de pagos:</strong> @pagosCliente.Count</p>
+                            <p><strong>Último pago:</strong> @pagosCliente.OrderByDescending(p => p.FechaPago).First().FechaPago.ToString("dd/MM/yyyy")</p>
+                        }
+                        else
+                        {
+                            <hr />
+                            <p class="text-muted">Este cliente no tiene pagos registrados.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private Pago pago = new Pago { FechaPago = DateTime.Now };
+    private List<Cliente>? clientes;
+    private Cliente? clienteSeleccionado;
+    private List<Pago>? pagosCliente;
+    private string? errorMessage;
+    private bool cargando = true;
+    private bool IsEdit => Id.HasValue && Id.Value > 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Cargar clientes
+            clientes = await Db.Clientes
+                .OrderBy(c => c.Nombre)
+                .ToListAsync();
+
+            if (IsEdit && Id.HasValue)
+            {
+                var p = await Db.Pagos
+                    .Include(p => p.Cliente)
+                    .FirstOrDefaultAsync(p => p.IdPago == Id.Value);
+
+                if (p != null)
+                {
+                    pago = p;
+                    await CargarInfoCliente(p.IdCliente);
+                }
+                else
+                {
+                    Nav.NavigateTo("/pagos");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Error al cargar datos: " + ex.Message;
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task OnClienteSeleccionado()
+    {
+        if (pago.IdCliente > 0)
+        {
+            await CargarInfoCliente(pago.IdCliente);
+        }
+        else
+        {
+            clienteSeleccionado = null;
+            pagosCliente = null;
+        }
+    }
+
+    private async Task CargarInfoCliente(int clienteId)
+    {
+        clienteSeleccionado = await Db.Clientes.FindAsync(clienteId);
+
+        pagosCliente = await Db.Pagos
+            .Where(p => p.IdCliente == clienteId)
+            .OrderByDescending(p => p.FechaPago)
+            .ToListAsync();
+    }
+
+    private void OnTipoMembresiaSeleccionado()
+    {
+        // Sugerir montos según el tipo
+        if (pago.Monto == 0)
+        {
+            pago.Monto = pago.TipoMembresia switch
+            {
+                "Mensual" => 500,
+                "Anual" => 5000,
+                "Por Clase" => 100,
+                _ => 0
+            };
+        }
+    }
+
+    private async Task Guardar()
+    {
+        try
+        {
+            // Validaciones
+            if (pago.IdCliente <= 0)
+            {
+                errorMessage = "Debe seleccionar un cliente";
+                return;
+            }
+
+            if (string.IsNullOrEmpty(pago.TipoMembresia))
+            {
+                errorMessage = "Debe seleccionar un tipo de membresía";
+                return;
+            }
+
+            if (pago.Monto <= 0)
+            {
+                errorMessage = "El monto debe ser mayor a 0";
+                return;
+            }
+
+            if (IsEdit)
+            {
+                Db.Pagos.Update(pago);
+            }
+            else
+            {
+                pago.FechaPago = DateTime.Now;
+                await Db.Pagos.AddAsync(pago);
+            }
+
+            await Db.SaveChangesAsync();
+            Nav.NavigateTo("/pagos");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Error al guardar: " + ex.Message;
+        }
+    }
+
+    private void Cancelar()
+    {
+        Nav.NavigateTo("/pagos");
+    }
+}

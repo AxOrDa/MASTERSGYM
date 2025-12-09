@@ -1,0 +1,106 @@
+﻿@page "/clientes"
+@inject GimnasioContext Db
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<h3>Clientes</h3>
+
+<p>
+    <button class="btn btn-primary" @onclick="Crear">Nuevo Cliente</button>
+</p>
+
+@if (cargando)
+{
+    <p>Cargando...</p>
+}
+else if (clientes == null || !clientes.Any())
+{
+    <p>No hay clientes todavía.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>Correo</th>
+                <th>Teléfono</th>
+                <th>Fecha registro</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in clientes)
+            {
+                <tr>
+                    <td>@c.IdCliente</td>
+                    <td>@c.Nombre</td>
+                    <td>@c.Apellido</td>
+                    <td>@c.Correo</td>
+                    <td>@c.Telefono</td>
+                    <td>@c.FechaRegistro.ToString("yyyy-MM-dd")</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary me-1" @onclick="() => Editar(c.IdCliente)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(c.IdCliente, c.Nombre, c.Apellido)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Cliente>? clientes;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarClientes();
+    }
+
+    private async Task CargarClientes()
+    {
+        cargando = true;
+        // Traer lista básica; incluir .AsNoTracking() para rendimiento
+        clientes = await Db.Clientes
+            .AsNoTracking() // <--Error
+            .OrderByDescending(c => c.FechaRegistro)
+            .ToListAsync();
+
+        cargando = false;
+        StateHasChanged();
+    }
+
+    private void Crear()
+    {
+        Nav.NavigateTo("/clientes/create");
+    }
+
+    private void Editar(int id)
+    {
+        Nav.NavigateTo($"/clientes/edit/{id}");
+    }
+
+    private async Task ConfirmDelete(int id, string nombre, string apellido)
+    {
+        var confirmado = await JS.InvokeAsync<bool>("confirm", $"¿Eliminar a {nombre} {apellido}?");
+        if (confirmado)
+        {
+            await Eliminar(id);
+        }
+    }
+
+    private async Task Eliminar(int id)
+    {
+        var entity = await Db.Clientes.FindAsync(id);
+        if (entity != null)
+        {
+            Db.Clientes.Remove(entity);
+            await Db.SaveChangesAsync();
+            await CargarClientes();
+        }
+    }
+}

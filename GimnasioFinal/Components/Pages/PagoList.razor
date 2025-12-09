@@ -1,0 +1,239 @@
+﻿@page "/pagos"
+@inject GimnasioContext Db
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<h3>Pagos</h3>
+
+<p>
+    <button class="btn btn-primary" @onclick="Crear">Registrar Pago</button>
+</p>
+
+<!-- Filtros -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <label class="form-label">Filtrar por Cliente</label>
+                <select class="form-select" @onchange="FiltrarPorCliente">
+                    <option value="0">-- Todos los clientes --</option>
+                    @if (todosClientes != null)
+                    {
+                        @foreach (var c in todosClientes)
+                        {
+                            <option value="@c.IdCliente">@c.Nombre @c.Apellido</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Filtrar por Tipo</label>
+                <select class="form-select" @onchange="FiltrarPorTipo">
+                    <option value="">-- Todos los tipos --</option>
+                    <option value="Mensual">Mensual</option>
+                    <option value="Anual">Anual</option>
+                    <option value="Por Clase">Por Clase</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-secondary w-100" @onclick="LimpiarFiltros">Limpiar Filtros</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (cargando)
+{
+    <p>Cargando...</p>
+}
+else if (pagos == null || !pagos.Any())
+{
+    <p>No hay pagos registrados.</p>
+}
+else
+{
+    <!-- Resumen -->
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title">Total Ingresos</h5>
+                    <h3>$@totalIngresos.ToString("N2")</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h5 class="card-title">Total Pagos</h5>
+                    <h3>@pagos.Count</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h5 class="card-title">Promedio por Pago</h5>
+                    <h3>$@((pagos.Count > 0 ? totalIngresos / pagos.Count : 0).ToString("N2"))</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Cliente</th>
+                <th>Monto</th>
+                <th>Fecha Pago</th>
+                <th>Tipo Membresía</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in pagos)
+            {
+                <tr>
+                    <td>@p.IdPago</td>
+                    <td>@p.Cliente?.Nombre @p.Cliente?.Apellido</td>
+                    <td class="text-success fw-bold">$@p.Monto.ToString("N2")</td>
+                    <td>@p.FechaPago.ToString("dd/MM/yyyy")</td>
+                    <td>
+                        <span class="badge @GetTipoBadgeClass(p.TipoMembresia)">
+                            @p.TipoMembresia
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary me-1" @onclick="() => Editar(p.IdPago)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(p.IdPago, p.Cliente?.Nombre, p.Monto)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Pago>? pagos;
+    private List<Pago>? todosPagos; // Para mantener la lista completa
+    private List<Cliente>? todosClientes;
+    private bool cargando = true;
+    private decimal totalIngresos = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        cargando = true;
+
+        // Cargar todos los pagos
+        todosPagos = await Db.Pagos
+            .Include(p => p.Cliente)
+            .AsNoTracking()
+            .OrderByDescending(p => p.FechaPago)
+            .ToListAsync();
+
+        // Cargar todos los clientes para el filtro
+        todosClientes = await Db.Clientes
+            .OrderBy(c => c.Nombre)
+            .ToListAsync();
+
+        pagos = todosPagos;
+        CalcularTotales();
+
+        cargando = false;
+    }
+
+    private void CalcularTotales()
+    {
+        totalIngresos = pagos?.Sum(p => p.Monto) ?? 0;
+    }
+
+    private string GetTipoBadgeClass(string tipo)
+    {
+        return tipo switch
+        {
+            "Mensual" => "bg-primary",
+            "Anual" => "bg-success",
+            "Por Clase" => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private void FiltrarPorCliente(ChangeEventArgs e)
+    {
+        var clienteId = int.Parse(e.Value?.ToString() ?? "0");
+
+        if (clienteId == 0)
+        {
+            pagos = todosPagos;
+        }
+        else
+        {
+            pagos = todosPagos?.Where(p => p.IdCliente == clienteId).ToList();
+        }
+
+        CalcularTotales();
+    }
+
+    private void FiltrarPorTipo(ChangeEventArgs e)
+    {
+        var tipo = e.Value?.ToString() ?? "";
+
+        if (string.IsNullOrEmpty(tipo))
+        {
+            pagos = todosPagos;
+        }
+        else
+        {
+            pagos = todosPagos?.Where(p => p.TipoMembresia == tipo).ToList();
+        }
+
+        CalcularTotales();
+    }
+
+    private void LimpiarFiltros()
+    {
+        pagos = todosPagos;
+        CalcularTotales();
+        StateHasChanged();
+    }
+
+    private void Crear()
+    {
+        Nav.NavigateTo("/pagos/create");
+    }
+
+    private void Editar(int id)
+    {
+        Nav.NavigateTo($"/pagos/edit/{id}");
+    }
+
+    private async Task ConfirmDelete(int id, string? nombreCliente, decimal monto)
+    {
+        var confirmado = await JS.InvokeAsync<bool>("confirm",
+            $"¿Eliminar el pago de ${monto:N2} de {nombreCliente}?");
+
+        if (confirmado)
+        {
+            await Eliminar(id);
+        }
+    }
+
+    private async Task Eliminar(int id)
+    {
+        var entity = await Db.Pagos.FindAsync(id);
+        if (entity != null)
+        {
+            Db.Pagos.Remove(entity);
+            await Db.SaveChangesAsync();
+            await CargarDatos();
+        }
+    }
+}

@@ -1,0 +1,87 @@
+﻿@page "/clientes/create"
+@page "/clientes/edit/{Id:int}"
+@inject GimnasioContext Db
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+
+<h3>@(IsEdit ? "Editar Cliente" : "Nuevo Cliente")</h3>
+
+<EditForm Model="clienteModel" OnValidSubmit="Guardar">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label">Nombre</label>
+        <InputText class="form-control" @bind-Value="clienteModel.Nombre" />
+        <ValidationMessage For="@(() => clienteModel.Nombre)" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Apellido</label>
+        <InputText class="form-control" @bind-Value="clienteModel.Apellido" />
+        <ValidationMessage For="@(() => clienteModel.Apellido)" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Correo</label>
+        <InputText class="form-control" @bind-Value="clienteModel.Correo" />
+        <ValidationMessage For="@(() => clienteModel.Correo)" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Teléfono</label>
+        <InputText class="form-control" @bind-Value="clienteModel.Telefono" />
+        <ValidationMessage For="@(() => clienteModel.Telefono)" />
+    </div>
+
+    <button type="submit" class="btn btn-success me-2">Guardar</button>
+    <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+</EditForm>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private Cliente clienteModel = new Cliente();
+    private bool IsEdit => Id.HasValue && Id.Value > 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEdit)
+        {
+            var c = await Db.Clientes.FindAsync(Id!.Value);
+            if (c != null)
+            {
+                clienteModel = c;
+            }
+            else
+            {
+                // si no existe, redirigir a lista
+                Nav.NavigateTo("/clientes");
+            }
+        }
+    }
+
+    private async Task Guardar()
+    {
+        if (IsEdit)
+        {
+            // update
+            Db.Clientes.Update(clienteModel);
+        }
+        else
+        {
+            clienteModel.FechaRegistro = DateTime.Now;
+            await Db.Clientes.AddAsync(clienteModel);
+        }
+
+        await Db.SaveChangesAsync();
+        Nav.NavigateTo("/clientes");
+    }
+
+    private void Cancelar()
+    {
+        Nav.NavigateTo("/clientes");
+    }
+}

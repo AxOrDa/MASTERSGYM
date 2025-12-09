@@ -1,0 +1,52 @@
+﻿@page "/clases/create"
+@inject GimnasioContext Db
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<h3>Nueva Clase</h3>
+
+<div class="card p-3">
+    <EditForm Model="clase" OnValidSubmit="Guardar">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label class="form-label">Nombre de la clase</label>
+            <InputText class="form-control" @bind-Value="clase.NombreClase" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Instructor</label>
+            <InputText class="form-control" @bind-Value="clase.Instructor" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Horario (Fecha y Hora)</label>
+            <InputDate Type="InputDateType.DateTimeLocal" class="form-control" @bind-Value="clase.Horario" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Cupos disponibles</label>
+            <InputNumber class="form-control" @bind-Value="clase.CuposDisponibles" />
+        </div>
+
+        <button class="btn btn-primary" type="submit">Guardar</button>
+        <button class="btn btn-secondary ms-2" type="button" @onclick="Cancelar">Cancelar</button>
+    </EditForm>
+</div>
+
+@code {
+    private Clase clase = new() { Horario = DateTime.Now };
+
+    private async Task Guardar()
+    {
+        Db.Clases.Add(clase);
+        await Db.SaveChangesAsync();
+        Nav.NavigateTo("/clases");
+    }
+
+    private void Cancelar()
+    {
+        Nav.NavigateTo("/clases");
+    }
+}

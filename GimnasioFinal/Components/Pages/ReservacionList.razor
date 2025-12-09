@@ -1,0 +1,167 @@
+﻿@page "/reservaciones"
+@inject GimnasioContext Db
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<h3>Reservaciones</h3>
+
+<p>
+    <button class="btn btn-primary" @onclick="Crear">Nueva Reservación</button>
+</p>
+
+@if (cargando)
+{
+    <p>Cargando...</p>
+}
+else if (reservaciones == null || !reservaciones.Any())
+{
+    <p>No hay reservaciones registradas.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Cliente</th>
+                <th>Clase</th>
+                <th>Fecha Reservación</th>
+                <th>Horario Clase</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in reservaciones)
+            {
+                <tr>
+                    <td>@r.IdReservacion</td>
+                    <td>@r.Cliente?.Nombre @r.Cliente?.Apellido</td>
+                    <td>@r.Clase?.NombreClase</td>
+                    <td>@r.FechaReservacion.ToString("dd/MM/yyyy")</td>
+                    <td>@r.Clase?.Horario.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>
+                        <span class="badge @GetEstadoBadgeClass(r.Estado)">
+                            @r.Estado
+                        </span>
+                    </td>
+                    <td>
+                        @if (r.Estado != "Cancelada")
+                        {
+                            <button class="btn btn-sm btn-secondary me-1" @onclick="() => Editar(r.IdReservacion)">Editar</button>
+                            <button class="btn btn-sm btn-warning me-1" @onclick="() => ConfirmCancelar(r.IdReservacion, r.Cliente?.Nombre, r.Clase?.NombreClase)">Cancelar</button>
+                        }
+                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(r.IdReservacion, r.Cliente?.Nombre, r.Clase?.NombreClase)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Reservacion>? reservaciones;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarReservaciones();
+    }
+
+    private async Task CargarReservaciones()
+    {
+        cargando = true;
+        reservaciones = await Db.Reservaciones
+            .Include(r => r.Cliente)
+            .Include(r => r.Clase)
+            .AsNoTracking()
+            .OrderByDescending(r => r.FechaReservacion)
+            .ToListAsync();
+        cargando = false;
+    }
+
+    private string GetEstadoBadgeClass(string estado)
+    {
+        return estado switch
+        {
+            "Confirmada" => "bg-success",
+            "Pendiente" => "bg-warning",
+            "Cancelada" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private void Crear()
+    {
+        Nav.NavigateTo("/reservaciones/create");
+    }
+
+    private void Editar(int id)
+    {
+        Nav.NavigateTo($"/reservaciones/edit/{id}");
+    }
+
+    private async Task ConfirmCancelar(int id, string? nombreCliente, string? nombreClase)
+    {
+        var confirmado = await JS.InvokeAsync<bool>("confirm",
+            $"¿Cancelar la reservación de {nombreCliente} para {nombreClase}?");
+
+        if (confirmado)
+        {
+            await CancelarReservacion(id);
+        }
+    }
+
+    private async Task CancelarReservacion(int id)
+    {
+        var reservacion = await Db.Reservaciones
+            .Include(r => r.Clase)
+            .FirstOrDefaultAsync(r => r.IdReservacion == id);
+
+        if (reservacion != null)
+        {
+            reservacion.Estado = "Cancelada";
+
+            // Liberar un cupo en la clase
+            if (reservacion.Clase != null)
+            {
+                reservacion.Clase.CuposDisponibles++;
+            }
+
+            await Db.SaveChangesAsync();
+            await CargarReservaciones();
+        }
+    }
+
+    private async Task ConfirmDelete(int id, string? nombreCliente, string? nombreClase)
+    {
+        var confirmado = await JS.InvokeAsync<bool>("confirm",
+            $"¿Eliminar permanentemente la reservación de {nombreCliente} para {nombreClase}?");
+
+        if (confirmado)
+        {
+            await Eliminar(id);
+        }
+    }
+
+    private async Task Eliminar(int id)
+    {
+        var reservacion = await Db.Reservaciones
+            .Include(r => r.Clase)
+            .FirstOrDefaultAsync(r => r.IdReservacion == id);
+
+        if (reservacion != null)
+        {
+            // Si la reservación no estaba cancelada, liberar el cupo
+            if (reservacion.Estado != "Cancelada" && reservacion.Clase != null)
+            {
+                reservacion.Clase.CuposDisponibles++;
+            }
+
+            Db.Reservaciones.Remove(reservacion);
+            await Db.SaveChangesAsync();
+            await CargarReservaciones();
+        }
+    }
+}

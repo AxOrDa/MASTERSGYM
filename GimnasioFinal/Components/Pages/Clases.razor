@@ -1,0 +1,106 @@
+﻿@page "/clases"
+@using Microsoft.EntityFrameworkCore
+@inject GimnasioContext Db
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+
+<h3>Clases</h3>
+
+<p>
+    <button class="btn btn-primary" @onclick="Crear">Nueva Clase</button>
+</p>
+
+@if (cargando)
+{
+    <p>Cargando...</p>
+}
+else if (clases == null || !clases.Any())
+{
+    <p>No hay clases registradas.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Nombre</th>
+                <th>Instructor</th>
+                <th>Horario</th>
+                <th>Cupos</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in clases)
+            {
+                <tr>
+                    <td>@c.IdClase</td>
+                    <td>@c.NombreClase</td>
+                    <td>@c.Instructor</td>
+                    <td>@c.Horario.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@c.CuposDisponibles</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary me-1" @onclick="() => Editar(c.IdClase)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(c.IdClase, c.NombreClase)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Clase>? clases;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarClases();
+    }
+
+    private async Task CargarClases()
+    {
+        cargando = true;
+
+        clases = await Db.Clases
+            .AsNoTracking()
+            .OrderBy(c => c.Horario)
+            .ToListAsync();
+
+        cargando = false;
+        StateHasChanged();
+    }
+
+    private void Crear()
+    {
+        Nav.NavigateTo("/clases/create");
+    }
+
+    private void Editar(int id)
+    {
+        Nav.NavigateTo($"/clases/edit/{id}");
+    }
+
+    private async Task ConfirmDelete(int id, string nombre)
+    {
+        var ok = await JS.InvokeAsync<bool>("confirm", $"¿Eliminar la clase '{nombre}'?");
+        if (ok)
+        {
+            await Eliminar(id);
+        }
+    }
+
+    private async Task Eliminar(int id)
+    {
+        var entity = await Db.Clases.FindAsync(id);
+        if (entity != null)
+        {
+            Db.Clases.Remove(entity);
+            await Db.SaveChangesAsync();
+            await CargarClases();
+        }
+    }
+}

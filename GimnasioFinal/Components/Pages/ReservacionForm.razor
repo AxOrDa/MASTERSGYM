@@ -1,0 +1,262 @@
+﻿@page "/reservaciones/create"
+@page "/reservaciones/edit/{Id:int}"
+@inject GimnasioContext Db
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<h3>@(IsEdit ? "Editar Reservación" : "Nueva Reservación")</h3>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success">@successMessage</div>
+}
+
+@if (cargando)
+{
+    <p>Cargando...</p>
+}
+else
+{
+    <EditForm Model="reservacion" OnValidSubmit="Guardar">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label class="form-label">Cliente</label>
+            <InputSelect class="form-control" @bind-Value="reservacion.IdCliente" disabled="@IsEdit">
+                <option value="0">-- Seleccione un cliente --</option>
+                @if (clientes != null)
+                {
+                    @foreach (var c in clientes)
+                    {
+                        <option value="@c.IdCliente">@c.Nombre @c.Apellido</option>
+                    }
+                }
+            </InputSelect>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Clase</label>
+            <InputSelect class="form-control" @bind-Value="reservacion.IdClase" @bind-Value:after="OnClaseSeleccionada" disabled="@IsEdit">
+                <option value="0">-- Seleccione una clase --</option>
+                @if (clases != null)
+                {
+                    @foreach (var c in clases)
+                    {
+                        <option value="@c.IdClase" disabled="@(c.CuposDisponibles <= 0 && !IsEdit)">
+                            @c.NombreClase - @c.Instructor (@c.Horario.ToString("dd/MM/yyyy HH:mm"))
+                            [@(c.CuposDisponibles) cupos disponibles]
+                        </option>
+                    }
+                }
+            </InputSelect>
+        </div>
+
+        @if (claseSeleccionada != null)
+        {
+            <div class="alert alert-info">
+                <strong>Información de la clase:</strong><br />
+                <strong>Nombre:</strong> @claseSeleccionada.NombreClase<br />
+                <strong>Instructor:</strong> @claseSeleccionada.Instructor<br />
+                <strong>Horario:</strong> @claseSeleccionada.Horario.ToString("dd/MM/yyyy HH:mm")<br />
+                <strong>Cupos disponibles:</strong> @claseSeleccionada.CuposDisponibles
+
+                @if (claseSeleccionada.CuposDisponibles <= 0 && !IsEdit)
+                {
+                    <br />
+        
+                    <span class="text-danger"><strong>⚠️ Esta clase no tiene cupos disponibles</strong></span>
+                }
+            </div>
+        }
+
+        <div class="mb-3">
+            <label class="form-label">Fecha de Reservación</label>
+            <InputDate class="form-control" @bind-Value="reservacion.FechaReservacion" disabled="@IsEdit" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Estado</label>
+            <InputSelect class="form-control" @bind-Value="reservacion.Estado">
+                <option value="Pendiente">Pendiente</option>
+                <option value="Confirmada">Confirmada</option>
+                <option value="Cancelada">Cancelada</option>
+            </InputSelect>
+        </div>
+
+        <button type="submit" class="btn btn-success me-2"
+                disabled="@(claseSeleccionada?.CuposDisponibles <= 0 && !IsEdit)">
+            Guardar
+        </button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private Reservacion reservacion = new Reservacion { FechaReservacion = DateTime.Now };
+    private List<Cliente>? clientes;
+    private List<Clase>? clases;
+    private Clase? claseSeleccionada;
+    private string? errorMessage;
+    private string? successMessage;
+    private bool cargando = true;
+    private bool IsEdit => Id.HasValue && Id.Value > 0;
+    private string? estadoOriginal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Cargar clientes
+            clientes = await Db.Clientes
+                .OrderBy(c => c.Nombre)
+                .ToListAsync();
+
+            // Cargar clases
+            clases = await Db.Clases
+                .OrderBy(c => c.Horario)
+                .ToListAsync();
+
+            if (IsEdit && Id.HasValue)
+            {
+                var r = await Db.Reservaciones
+                    .Include(r => r.Cliente)
+                    .Include(r => r.Clase)
+                    .FirstOrDefaultAsync(r => r.IdReservacion == Id.Value);
+
+                if (r != null)
+                {
+                    reservacion = r;
+                    estadoOriginal = r.Estado;
+                    claseSeleccionada = r.Clase;
+                }
+                else
+                {
+                    Nav.NavigateTo("/reservaciones");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Error al cargar datos: " + ex.Message;
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private void OnClaseSeleccionada()
+    {
+        if (reservacion.IdClase > 0)
+        {
+            claseSeleccionada = clases?.FirstOrDefault(c => c.IdClase == reservacion.IdClase);
+        }
+        else
+        {
+            claseSeleccionada = null;
+        }
+    }
+
+    private async Task Guardar()
+    {
+        try
+        {
+            // Validaciones
+            if (reservacion.IdCliente <= 0)
+            {
+                errorMessage = "Debe seleccionar un cliente";
+                return;
+            }
+
+            if (reservacion.IdClase <= 0)
+            {
+                errorMessage = "Debe seleccionar una clase";
+                return;
+            }
+
+            if (IsEdit)
+            {
+                // Lógica para editar
+                var claseActual = await Db.Clases.FindAsync(reservacion.IdClase);
+
+                // Si el estado cambió de no-cancelada a cancelada, liberar cupo
+                if (estadoOriginal != "Cancelada" && reservacion.Estado == "Cancelada" && claseActual != null)
+                {
+                    claseActual.CuposDisponibles++;
+                }
+                // Si el estado cambió de cancelada a no-cancelada, ocupar cupo
+                else if (estadoOriginal == "Cancelada" && reservacion.Estado != "Cancelada" && claseActual != null)
+                {
+                    if (claseActual.CuposDisponibles > 0)
+                    {
+                        claseActual.CuposDisponibles--;
+                    }
+                    else
+                    {
+                        errorMessage = "No hay cupos disponibles en esta clase";
+                        return;
+                    }
+                }
+
+                Db.Reservaciones.Update(reservacion);
+            }
+            else
+            {
+                // Lógica para crear nueva reservación
+                var clase = await Db.Clases.FindAsync(reservacion.IdClase);
+
+                if (clase == null)
+                {
+                    errorMessage = "Clase no encontrada";
+                    return;
+                }
+
+                if (clase.CuposDisponibles <= 0)
+                {
+                    errorMessage = "No hay cupos disponibles en esta clase";
+                    return;
+                }
+
+                // Verificar que el cliente no tenga ya una reservación para esta clase
+                var reservacionExistente = await Db.Reservaciones
+                    .AnyAsync(r => r.IdCliente == reservacion.IdCliente
+                                && r.IdClase == reservacion.IdClase
+                                && r.Estado != "Cancelada");
+
+                if (reservacionExistente)
+                {
+                    errorMessage = "Este cliente ya tiene una reservación activa para esta clase";
+                    return;
+                }
+
+                // Reducir cupos disponibles
+                clase.CuposDisponibles--;
+
+                reservacion.FechaReservacion = DateTime.Now;
+                await Db.Reservaciones.AddAsync(reservacion);
+            }
+
+            await Db.SaveChangesAsync();
+            Nav.NavigateTo("/reservaciones");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Error al guardar: " + ex.Message;
+        }
+    }
+
+    private void Cancelar()
+    {
+        Nav.NavigateTo("/reservaciones");
+    }
+}
