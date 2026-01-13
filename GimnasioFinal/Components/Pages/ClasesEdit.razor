@@ -1,108 +1,139 @@
 ﻿@page "/clases/edit/{Id:int}"
+@using GimnasioFinal.Models
+@using GimnasioFinal.Data
 @inject GimnasioContext Db
 @inject NavigationManager Nav
 @rendermode InteractiveServer
 
-<h3>Editar Clase</h3>
-
-@if (!string.IsNullOrEmpty(errorMessage))
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
-
-@if (cargando)
-{
-    <p>Cargando...</p>
-}
-else if (clase == null)
-{
-    <p class="text-danger">No se encontró la clase.</p>
-}
-else
-{
-    <EditForm Model="clase" OnValidSubmit="Guardar">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-
-        <div class="mb-3">
-            <label class="form-label">Nombre de la Clase</label>
-            <InputText class="form-control" @bind-Value="clase.NombreClase" />
+<div class="dashboard-wrapper animate-fade-in">
+    <div class="container" style="max-width: 600px;">
+        <div class="d-flex align-items-center mb-4">
+            <button class="btn-back me-3" @onclick="Cancelar"><i class="bi bi-arrow-left"></i></button>
+            <h2 class="text-neon fw-bold m-0">EDITAR CLASE</h2>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Instructor</label>
-            <InputText class="form-control" @bind-Value="clase.Instructor" />
-        </div>
+        @if (cargando)
+        {
+            <div class="text-center py-5"><div class="spinner-border text-neon"></div></div>
+        }
+        else if (clase == null)
+        {
+            <div class="alert alert-danger">No se encontró la clase seleccionada.</div>
+        }
+        else
+        {
+            <div class="glass-panel p-4">
+                <EditForm Model="clase" OnValidSubmit="Guardar">
+                    <DataAnnotationsValidator />
+                    <div class="mb-3">
+                        <label class="label-neon">NOMBRE DE LA CLASE</label>
+                        <InputText class="form-control-dark" @bind-Value="clase.NombreClase" />
+                        <ValidationMessage For="@(() => clase.NombreClase)" class="text-danger small" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="label-neon">INSTRUCTOR</label>
+                        <InputText class="form-control-dark" @bind-Value="clase.Instructor" />
+                    </div>
+                    <div class="row">
+                        <div class="col-md-7 mb-3">
+                            <label class="label-neon">HORARIO</label>
+                            <InputDate Type="InputDateType.DateTimeLocal" class="form-control-dark" @bind-Value="clase.Horario" />
+                        </div>
+                        <div class="col-md-5 mb-3">
+                            <label class="label-neon">CUPOS</label>
+                            <InputNumber class="form-control-dark" @bind-Value="clase.CuposDisponibles" />
+                        </div>
+                    </div>
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-neon py-2" disabled="@guardando">
+                            @(guardando ? "GUARDANDO..." : "ACTUALIZAR CLASE")
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+    </div>
+</div>
 
-        <div class="mb-3">
-            <label class="form-label">Horario (Fecha y Hora)</label>
-            <InputDate Type="InputDateType.DateTimeLocal" class="form-control" @bind-Value="clase.Horario" />
-        </div>
+@* Mismos estilos que ClasesCreate *@
+<style>
+    .dashboard-wrapper {
+        padding: 40px 20px;
+    }
 
-        <div class="mb-3">
-            <label class="form-label">Cupos disponibles</label>
-            <InputNumber class="form-control" @bind-Value="clase.CuposDisponibles" />
-        </div>
+    .text-neon {
+        color: #ccff00;
+        text-shadow: 0 0 10px rgba(204, 255, 0, 0.4);
+    }
 
-        <button class="btn btn-primary" type="submit" disabled="@guardando">Guardar</button>
-        <button class="btn btn-secondary ms-2" type="button" @onclick="Cancelar" disabled="@guardando">Cancelar</button>
-    </EditForm>
-}
+    .glass-panel {
+        background: rgba(30, 30, 30, 0.8);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 20px;
+    }
+
+    .label-neon {
+        color: #ccff00;
+        font-size: 0.75rem;
+        font-weight: bold;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .form-control-dark {
+        background: rgba(0,0,0,0.3);
+        border: 1px solid #444;
+        color: white;
+        padding: 12px;
+        border-radius: 10px;
+        width: 100%;
+    }
+
+    .btn-neon {
+        background: #ccff00;
+        color: #000;
+        font-weight: 800;
+        border-radius: 10px;
+        transition: 0.3s;
+    }
+
+        .btn-neon:hover {
+            background: #fff;
+            box-shadow: 0 0 20px #ccff00;
+        }
+
+    .btn-back {
+        background: none;
+        border: 1px solid #444;
+        color: #fff;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.4s ease-out;
+    }
+</style>
 
 @code {
-    [Parameter]
-    public int Id { get; set; }
-
+    [Parameter] public int Id { get; set; }
     private Clase? clase;
     private bool cargando = true;
     private bool guardando = false;
-    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            clase = await Db.Clases.FindAsync(Id);
-            if (clase == null)
-            {
-                errorMessage = "No se encontró la clase.";
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = "Error al cargar: " + ex.Message;
-        }
-        finally
-        {
-            cargando = false;
-        }
+        clase = await Db.Clases.FindAsync(Id);
+        cargando = false;
     }
 
     private async Task Guardar()
     {
-        try
-        {
-            guardando = true;
-
-            if (clase != null)
-            {
-                Db.Clases.Update(clase);
-                await Db.SaveChangesAsync();
-                Nav.NavigateTo("/clases");
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = "Error al guardar: " + ex.Message;
-        }
-        finally
-        {
-            guardando = false;
-        }
-    }
-
-    private void Cancelar()
-    {
+        guardando = true;
+        Db.Clases.Update(clase!);
+        await Db.SaveChangesAsync();
         Nav.NavigateTo("/clases");
     }
+    private void Cancelar() => Nav.NavigateTo("/clases");
 }

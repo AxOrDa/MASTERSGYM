@@ -1,106 +1,162 @@
 ﻿@page "/clientes"
+@using Microsoft.EntityFrameworkCore
+@using GimnasioFinal.Data
+@using GimnasioFinal.Models
 @inject GimnasioContext Db
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
-<h3>Clientes</h3>
+<div class="dashboard-wrapper animate-fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-neon fw-bold"><i class="bi bi-people-fill"></i> GESTIÓN DE CLIENTES</h2>
+        <button class="btn btn-neon" @onclick="Crear">
+            <i class="bi bi-person-plus-fill"></i> NUEVO CLIENTE
+        </button>
+    </div>
 
-<p>
-    <button class="btn btn-primary" @onclick="Crear">Nuevo Cliente</button>
-</p>
+    <div class="glass-panel p-0 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0 custom-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>NOMBRE COMPLETO</th>
+                        <th>CORREO ELECTRÓNICO</th>
+                        <th>TELÉFONO</th>
+                        <th>REGISTRO</th>
+                        <th class="text-center">ACCIONES</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (cargando)
+                    {
+                        <tr><td colspan="6" class="text-center py-5"><div class="spinner-border text-neon"></div></td></tr>
+                    }
+                    else if (clientes == null || !clientes.Any())
+                    {
+                        <tr><td colspan="6" class="text-center py-5 text-muted">No hay clientes registrados.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var c in clientes)
+                        {
+                            <tr>
+                                <td class="text-white-50">#@c.IdCliente</td>
+                                <td class="fw-bold">@c.Nombre @c.Apellido</td>
+                                <td>@c.Correo</td>
+                                <td><span class="badge-phone">@c.Telefono</span></td>
+                                <td class="text-white-50">@c.FechaRegistro.ToString("dd/MM/yyyy")</td>
+                                <td class="text-center">
+                                    <button class="btn-action edit" @onclick="() => Editar(c.IdCliente)">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
+                                    <button class="btn-action delete" @onclick="() => ConfirmDelete(c.IdCliente, c.Nombre, c.Apellido)">
+                                        <i class="bi bi-trash3-fill"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-@if (cargando)
-{
-    <p>Cargando...</p>
-}
-else if (clientes == null || !clientes.Any())
-{
-    <p>No hay clientes todavía.</p>
-}
-else
-{
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Id</th>
-                <th>Nombre</th>
-                <th>Apellido</th>
-                <th>Correo</th>
-                <th>Teléfono</th>
-                <th>Fecha registro</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var c in clientes)
-            {
-                <tr>
-                    <td>@c.IdCliente</td>
-                    <td>@c.Nombre</td>
-                    <td>@c.Apellido</td>
-                    <td>@c.Correo</td>
-                    <td>@c.Telefono</td>
-                    <td>@c.FechaRegistro.ToString("yyyy-MM-dd")</td>
-                    <td>
-                        <button class="btn btn-sm btn-secondary me-1" @onclick="() => Editar(c.IdCliente)">Editar</button>
-                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(c.IdCliente, c.Nombre, c.Apellido)">Eliminar</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+<style>
+    .dashboard-wrapper {
+        padding: 20px;
+    }
+
+    .text-neon {
+        color: #ccff00;
+        text-shadow: 0 0 10px rgba(204, 255, 0, 0.4);
+    }
+
+    .glass-panel {
+        background: rgba(30, 30, 30, 0.6);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 15px;
+    }
+
+    .btn-neon {
+        background: #ccff00;
+        color: #000;
+        font-weight: 800;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        transition: 0.3s;
+    }
+
+        .btn-neon:hover {
+            background: #fff;
+            box-shadow: 0 0 15px #ccff00;
+        }
+
+    .badge-phone {
+        background: rgba(255,255,255,0.05);
+        padding: 4px 8px;
+        border-radius: 5px;
+        font-size: 0.85rem;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .btn-action {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #fff;
+        margin: 0 5px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        transition: 0.3s;
+    }
+
+        .btn-action.edit:hover {
+            color: #000;
+            background: #ccff00;
+            border-color: #ccff00;
+            box-shadow: 0 0 10px #ccff00;
+        }
+
+        .btn-action.delete:hover {
+            color: #fff;
+            background: #ff4444;
+            border-color: #ff4444;
+            box-shadow: 0 0 10px #ff4444;
+        }
+</style>
 
 @code {
     private List<Cliente>? clientes;
     private bool cargando = true;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CargarClientes();
-    }
+    protected override async Task OnInitializedAsync() => await CargarClientes();
 
     private async Task CargarClientes()
     {
         cargando = true;
-        // Traer lista básica; incluir .AsNoTracking() para rendimiento
-        clientes = await Db.Clientes
-            .AsNoTracking() // <--Error
-            .OrderByDescending(c => c.FechaRegistro)
-            .ToListAsync();
-
+        clientes = await Db.Clientes.AsNoTracking().OrderByDescending(c => c.FechaRegistro).ToListAsync();
         cargando = false;
-        StateHasChanged();
     }
 
-    private void Crear()
-    {
-        Nav.NavigateTo("/clientes/create");
-    }
-
-    private void Editar(int id)
-    {
-        Nav.NavigateTo($"/clientes/edit/{id}");
-    }
+    private void Crear() => Nav.NavigateTo("/clientes/create");
+    private void Editar(int id) => Nav.NavigateTo($"/clientes/edit/{id}");
 
     private async Task ConfirmDelete(int id, string nombre, string apellido)
     {
         var confirmado = await JS.InvokeAsync<bool>("confirm", $"¿Eliminar a {nombre} {apellido}?");
         if (confirmado)
         {
-            await Eliminar(id);
-        }
-    }
-
-    private async Task Eliminar(int id)
-    {
-        var entity = await Db.Clientes.FindAsync(id);
-        if (entity != null)
-        {
-            Db.Clientes.Remove(entity);
-            await Db.SaveChangesAsync();
-            await CargarClientes();
+            var entity = await Db.Clientes.FindAsync(id);
+            if (entity != null)
+            {
+                Db.Clientes.Remove(entity);
+                await Db.SaveChangesAsync();
+                await CargarClientes();
+            }
         }
     }
 }

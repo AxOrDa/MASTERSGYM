@@ -1,7 +1,204 @@
 ﻿@page "/"
+@using Microsoft.EntityFrameworkCore
+@using GimnasioFinal.Data
+@using GimnasioFinal.Models
+@inject GimnasioContext Db
 
-<PageTitle>Home</PageTitle>
+<PageTitle>MASTERSGYM</PageTitle>
 
-<h1>Bienvenido al Sistema de Gimnasio</h1>
+<div class="dashboard-container">
+    <div class="welcome-banner p-5 mb-4 rounded-4 text-white shadow-lg">
+        <div class="py-3">
+            <h1 class="display-4 fw-bold animate-fade-in">BIENVENIDO A <span class="text-neon">MASTERSGYM</span></h1>
+            <p class="fs-4 opacity-90">Gestión de alto rendimiento para <span class="fw-bold">GYMNATORS</span>.</p>
+            <div class="mt-4">
+                <span class="status-badge"><span class="dot"></span> SISTEMA EN LÍNEA</span>
+            </div>
+        </div>
+    </div>
 
-<p>Usa el menú lateral para navegar.</p>
+    <div class="row g-4 px-2">
+        <div class="col-md-4">
+            <div class="stats-card p-4">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h5 class="card-label">COMUNIDAD</h5>
+                        <h2 class="card-value">@totalClientes</h2>
+                        <p class="card-desc">Clientes registrados</p>
+                    </div>
+                    <div class="icon-circle">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                </div>
+                <a href="clientes" class="btn btn-outline-neon btn-sm w-100 mt-3">Ver Listado</a>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="stats-card p-4">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h5 class="card-label">ENTRENAMIENTO</h5>
+                        <h2 class="card-value">@totalClases</h2>
+                        <p class="card-desc">Clases disponibles</p>
+                    </div>
+                    <div class="icon-circle">
+                        <i class="bi bi-calendar3"></i>
+                    </div>
+                </div>
+                <a href="clases" class="btn btn-outline-neon btn-sm w-100 mt-3">Ver Calendario</a>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="stats-card p-4">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h5 class="card-label">FINANZAS</h5>
+                        <h2 class="card-value">$@totalIngresos.ToString("N2")</h2>
+                        <p class="card-desc">Total recaudado</p>
+                    </div>
+                    <div class="icon-circle">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
+                </div>
+                <a href="pagos" class="btn btn-outline-neon btn-sm w-100 mt-3">Revisar Caja</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Contenedor principal para asegurar que llene el espacio */
+    .dashboard-container {
+        min-height: 80vh;
+        padding-bottom: 2rem;
+    }
+
+    /* Banner con imagen de fondo y overlay oscuro */
+    .welcome-banner {
+        background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8)), url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1470&auto=format&fit=crop');
+        background-size: cover;
+        background-position: center;
+        border-left: 8px solid #ccff00;
+    }
+
+    /* Colores Neón */
+    .text-neon {
+        color: #ccff00;
+        text-shadow: 0 0 10px rgba(204, 255, 0, 0.4);
+    }
+
+    /* Badge de Estado */
+    .status-badge {
+        background: rgba(204, 255, 0, 0.1);
+        color: #ccff00;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        border: 1px solid rgba(204, 255, 0, 0.3);
+    }
+
+    .dot {
+        height: 8px;
+        width: 8px;
+        background-color: #ccff00;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+        box-shadow: 0 0 8px #ccff00;
+    }
+
+    /* Tarjetas de Estadísticas Mejoradas */
+    .stats-card {
+        background-color: #1e1e1e;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        transition: transform 0.3s ease, border-color 0.3s ease;
+    }
+
+        .stats-card:hover {
+            transform: translateY(-5px);
+            border-color: #ccff00;
+        }
+
+    /* Textos dentro de la tarjeta (CORRECCIÓN DE VISIBILIDAD) */
+    .card-label {
+        color: #aeaeae !important; /* Gris claro legible */
+        font-size: 0.8rem;
+        letter-spacing: 1px;
+    }
+
+    .card-value {
+        color: #ffffff !important; /* Blanco puro */
+        margin: 5px 0;
+    }
+
+    .card-desc {
+        color: #cccccc !important; /* Gris intermedio legible */
+        font-size: 0.9rem;
+        margin-bottom: 0;
+    }
+
+    /* Círculo de Icono */
+    .icon-circle {
+        background: rgba(204, 255, 0, 0.1);
+        color: #ccff00;
+        width: 45px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        font-size: 1.4rem;
+    }
+
+    /* Botones Neón */
+    .btn-outline-neon {
+        color: #ccff00;
+        border-color: #ccff00;
+    }
+
+        .btn-outline-neon:hover {
+            background-color: #ccff00;
+            color: #000;
+            font-weight: bold;
+        }
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+</style>
+
+@code {
+    private int totalClientes;
+    private int totalClases;
+    private decimal totalIngresos;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Consultas reales a la base de datos
+            totalClientes = await Db.Clientes.CountAsync();
+            totalClases = await Db.Clases.CountAsync();
+
+            // Sumamos los montos de la tabla Pagos
+            totalIngresos = await Db.Pagos.SumAsync(p => p.Monto);
+        }
+        catch (Exception ex)
+        {
+            // Manejo básico de errores si la BD está vacía
+            totalClientes = 0;
+            totalClases = 0;
+            totalIngresos = 0;
+        }
+    }
+}

@@ -1,106 +1,167 @@
 ﻿@page "/clases"
 @using Microsoft.EntityFrameworkCore
+@using GimnasioFinal.Data
+@using GimnasioFinal.Models
 @inject GimnasioContext Db
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
+<div class="dashboard-wrapper animate-fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-neon fw-bold"><i class="bi bi-calendar3"></i> GESTIÓN DE CLASES</h2>
+        <button class="btn btn-neon" @onclick="Crear">
+            <i class="bi bi-plus-square-fill"></i> NUEVA CLASE
+        </button>
+    </div>
 
-<h3>Clases</h3>
+    <div class="glass-panel p-0 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0 custom-table">
+                <thead>
+                    <tr>
+                        <th>CLASE</th>
+                        <th>INSTRUCTOR</th>
+                        <th>HORARIO</th>
+                        <th class="text-center">CUPOS</th>
+                        <th class="text-center">ACCIONES</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (cargando)
+                    {
+                        <tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-neon"></div></td></tr>
+                    }
+                    else if (clases == null || !clases.Any())
+                    {
+                        <tr><td colspan="5" class="text-center py-5 text-muted">No hay clases programadas.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var c in clases)
+                        {
+                            <tr>
+                                <td class="fw-bold text-neon">@c.NombreClase</td>
+                                <td><i class="bi bi-person-badge me-2 text-white-50"></i>@c.Instructor</td>
+                                <td>
+                                    <div class="text-white">@c.Horario.ToString("dd/MM/yyyy")</div>
+                                    <small class="text-white-50">@c.Horario.ToString("HH:mm") hrs</small>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge @(c.CuposDisponibles == 0 ? "bg-danger" : "badge-cupo")">
+                                        @c.CuposDisponibles
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn-action edit" @onclick="() => Editar(c.IdClase)">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
+                                    <button class="btn-action delete" @onclick="() => ConfirmDelete(c.IdClase, c.NombreClase)">
+                                        <i class="bi bi-trash3-fill"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-<p>
-    <button class="btn btn-primary" @onclick="Crear">Nueva Clase</button>
-</p>
+<style>
+    .dashboard-wrapper {
+        padding: 20px;
+    }
 
-@if (cargando)
-{
-    <p>Cargando...</p>
-}
-else if (clases == null || !clases.Any())
-{
-    <p>No hay clases registradas.</p>
-}
-else
-{
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Id</th>
-                <th>Nombre</th>
-                <th>Instructor</th>
-                <th>Horario</th>
-                <th>Cupos</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var c in clases)
-            {
-                <tr>
-                    <td>@c.IdClase</td>
-                    <td>@c.NombreClase</td>
-                    <td>@c.Instructor</td>
-                    <td>@c.Horario.ToString("yyyy-MM-dd HH:mm")</td>
-                    <td>@c.CuposDisponibles</td>
-                    <td>
-                        <button class="btn btn-sm btn-secondary me-1" @onclick="() => Editar(c.IdClase)">Editar</button>
-                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(c.IdClase, c.NombreClase)">Eliminar</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+    .text-neon {
+        color: #ccff00;
+        text-shadow: 0 0 10px rgba(204, 255, 0, 0.4);
+    }
+
+    .glass-panel {
+        background: rgba(30, 30, 30, 0.6);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 15px;
+    }
+
+    .btn-neon {
+        background: #ccff00;
+        color: #000;
+        font-weight: 800;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        transition: 0.3s;
+    }
+
+        .btn-neon:hover {
+            background: #fff;
+            box-shadow: 0 0 15px #ccff00;
+        }
+
+    .badge-cupo {
+        background: rgba(204, 255, 0, 0.1);
+        color: #ccff00;
+        border: 1px solid #ccff00;
+        padding: 5px 12px;
+        border-radius: 20px;
+    }
+
+    .btn-action {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #fff;
+        margin: 0 5px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        transition: 0.3s;
+    }
+
+        .btn-action.edit:hover {
+            color: #000;
+            background: #ccff00;
+            border-color: #ccff00;
+            box-shadow: 0 0 10px #ccff00;
+        }
+
+        .btn-action.delete:hover {
+            color: #fff;
+            background: #ff4444;
+            border-color: #ff4444;
+            box-shadow: 0 0 10px #ff4444;
+        }
+</style>
 
 @code {
     private List<Clase>? clases;
     private bool cargando = true;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CargarClases();
-    }
+    protected override async Task OnInitializedAsync() => await CargarClases();
 
     private async Task CargarClases()
     {
         cargando = true;
-
-        clases = await Db.Clases
-            .AsNoTracking()
-            .OrderBy(c => c.Horario)
-            .ToListAsync();
-
+        clases = await Db.Clases.AsNoTracking().OrderBy(c => c.Horario).ToListAsync();
         cargando = false;
-        StateHasChanged();
     }
 
-    private void Crear()
-    {
-        Nav.NavigateTo("/clases/create");
-    }
-
-    private void Editar(int id)
-    {
-        Nav.NavigateTo($"/clases/edit/{id}");
-    }
+    private void Crear() => Nav.NavigateTo("/clases/create");
+    private void Editar(int id) => Nav.NavigateTo($"/clases/edit/{id}");
 
     private async Task ConfirmDelete(int id, string nombre)
     {
         var ok = await JS.InvokeAsync<bool>("confirm", $"¿Eliminar la clase '{nombre}'?");
         if (ok)
         {
-            await Eliminar(id);
-        }
-    }
-
-    private async Task Eliminar(int id)
-    {
-        var entity = await Db.Clases.FindAsync(id);
-        if (entity != null)
-        {
-            Db.Clases.Remove(entity);
-            await Db.SaveChangesAsync();
-            await CargarClases();
+            var entity = await Db.Clases.FindAsync(id);
+            if (entity != null)
+            {
+                Db.Clases.Remove(entity);
+                await Db.SaveChangesAsync();
+                await CargarClases();
+            }
         }
     }
 }

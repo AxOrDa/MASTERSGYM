@@ -1,360 +1,253 @@
 ﻿@page "/dashboard"
+@using Microsoft.EntityFrameworkCore
+@using GimnasioFinal.Data
 @inject GimnasioContext Db
 @rendermode InteractiveServer
 
-<PageTitle>Dashboard - Gimnasio</PageTitle>
+<PageTitle>Dashboard - GYMNATORS</PageTitle>
 
-<h3>📊 Dashboard y Reportes</h3>
-
-@if (cargando)
-{
-    <div class="text-center">
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Cargando...</span>
-        </div>
-        <p>Cargando estadísticas...</p>
-    </div>
-}
-else
-{
-    <!-- Tarjetas de Resumen -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card text-white bg-primary">
-                <div class="card-body">
-                    <h5 class="card-title">👥 Clientes</h5>
-                    <h2>@totalClientes</h2>
-                    <small>Total registrados</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-white bg-info">
-                <div class="card-body">
-                    <h5 class="card-title">📅 Clases</h5>
-                    <h2>@totalClases</h2>
-                    <small>Total disponibles</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-white bg-warning">
-                <div class="card-body">
-                    <h5 class="card-title">📝 Reservaciones</h5>
-                    <h2>@totalReservaciones</h2>
-                    <small>Activas</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-white bg-success">
-                <div class="card-body">
-                    <h5 class="card-title">💰 Ingresos</h5>
-                    <h2>$@totalIngresos.ToString("N2")</h2>
-                    <small>Total histórico</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Fila 2: Estadísticas detalladas -->
-    <div class="row mb-4">
-        <!-- Reservaciones por Estado -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5>📊 Reservaciones por Estado</h5>
-                </div>
-                <div class="card-body">
-                    @if (reservacionesPorEstado != null && reservacionesPorEstado.Any())
-                    {
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Estado</th>
-                                    <th class="text-end">Cantidad</th>
-                                    <th class="text-end">%</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in reservacionesPorEstado)
-                                {
-                                    <tr>
-                                        <td>
-                                            <span class="badge @GetEstadoBadgeClass(item.Estado)">
-                                                @item.Estado
-                                            </span>
-                                        </td>
-                                        <td class="text-end">@item.Cantidad</td>
-                                        <td class="text-end">@item.Porcentaje.ToString("F1")%</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    }
-                    else
-                    {
-                        <p class="text-muted">No hay datos disponibles</p>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <!-- Ingresos por Tipo de Membresía -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-success text-white">
-                    <h5>💵 Ingresos por Tipo de Membresía</h5>
-                </div>
-                <div class="card-body">
-                    @if (ingresosPorTipo != null && ingresosPorTipo.Any())
-                    {
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Tipo</th>
-                                    <th class="text-end">Cantidad</th>
-                                    <th class="text-end">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in ingresosPorTipo)
-                                {
-                                    <tr>
-                                        <td>
-                                            <span class="badge @GetTipoBadgeClass(item.Tipo)">
-                                                @item.Tipo
-                                            </span>
-                                        </td>
-                                        <td class="text-end">@item.Cantidad</td>
-                                        <td class="text-end text-success fw-bold">$@item.Total.ToString("N2")</td>
-                                    </tr>
-                                }
-                            </tbody>
-                            <tfoot>
-                                <tr class="fw-bold">
-                                    <td>TOTAL</td>
-                                    <td class="text-end">@ingresosPorTipo.Sum(x => x.Cantidad)</td>
-                                    <td class="text-end text-success">$@ingresosPorTipo.Sum(x => x.Total).ToString("N2")</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    }
-                    else
-                    {
-                        <p class="text-muted">No hay datos disponibles</p>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Fila 3: Clases más populares y Clientes con más reservaciones -->
-    <div class="row mb-4">
-        <!-- Top 5 Clases Más Populares -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-info text-white">
-                    <h5>🏆 Top 5 Clases Más Populares</h5>
-                </div>
-                <div class="card-body">
-                    @if (clasesPopulares != null && clasesPopulares.Any())
-                    {
-                        <table class="table table-sm table-hover">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Clase</th>
-                                    <th>Instructor</th>
-                                    <th class="text-end">Reservaciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @for (int i = 0; i < clasesPopulares.Count; i++)
-                                {
-                                    var clase = clasesPopulares[i];
-                                    <tr>
-                                        <td>
-                                            @if (i == 0)
-                                            {
-                                                <span class="badge bg-warning">🥇</span>
-                                            }
-                                            else if (i == 1)
-                                            {
-                                                <span class="badge bg-secondary">🥈</span>
-                                            }
-                                            else if (i == 2)
-                                            {
-                                                <span class="badge bg-danger">🥉</span>
-                                            }
-                                            else
-                                            {
-                                                <span>@(i + 1)</span>
-                                            }
-                                        </td>
-                                        <td>@clase.NombreClase</td>
-                                        <td>@clase.Instructor</td>
-                                        <td class="text-end">
-                                            <span class="badge bg-primary">@clase.TotalReservaciones</span>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    }
-                    else
-                    {
-                        <p class="text-muted">No hay datos disponibles</p>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <!-- Top 5 Clientes con Más Reservaciones -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-warning text-dark">
-                    <h5>⭐ Top 5 Clientes Más Activos</h5>
-                </div>
-                <div class="card-body">
-                    @if (clientesActivos != null && clientesActivos.Any())
-                    {
-                        <table class="table table-sm table-hover">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Cliente</th>
-                                    <th class="text-end">Reservaciones</th>
-                                    <th class="text-end">Total Pagado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @for (int i = 0; i < clientesActivos.Count; i++)
-                                {
-                                    var cliente = clientesActivos[i];
-                                    <tr>
-                                        <td>
-                                            @if (i == 0)
-                                            {
-                                                <span class="badge bg-warning">🥇</span>
-                                            }
-                                            else if (i == 1)
-                                            {
-                                                <span class="badge bg-secondary">🥈</span>
-                                            }
-                                            else if (i == 2)
-                                            {
-                                                <span class="badge bg-danger">🥉</span>
-                                            }
-                                            else
-                                            {
-                                                <span>@(i + 1)</span>
-                                            }
-                                        </td>
-                                        <td>@cliente.NombreCompleto</td>
-                                        <td class="text-end">
-                                            <span class="badge bg-primary">@cliente.TotalReservaciones</span>
-                                        </td>
-                                        <td class="text-end text-success fw-bold">$@cliente.TotalPagado.ToString("N2")</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    }
-                    else
-                    {
-                        <p class="text-muted">No hay datos disponibles</p>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Fila 4: Clases con Cupos Disponibles -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header bg-dark text-white">
-                    <h5>📅 Estado de Cupos por Clase</h5>
-                </div>
-                <div class="card-body">
-                    @if (estadoCupos != null && estadoCupos.Any())
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Clase</th>
-                                        <th>Instructor</th>
-                                        <th>Horario</th>
-                                        <th class="text-center">Cupos Disponibles</th>
-                                        <th class="text-center">Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var clase in estadoCupos)
-                                    {
-                                        <tr>
-                                            <td>@clase.NombreClase</td>
-                                            <td>@clase.Instructor</td>
-                                            <td>@clase.Horario.ToString("dd/MM/yyyy HH:mm")</td>
-                                            <td class="text-center">
-                                                <span class="badge @GetCuposBadgeClass(clase.CuposDisponibles)">
-                                                    @clase.CuposDisponibles
-                                                </span>
-                                            </td>
-                                            <td class="text-center">
-                                                @if (clase.CuposDisponibles == 0)
-                                                {
-                                                    <span class="badge bg-danger">LLENO</span>
-                                                }
-                                                else if (clase.CuposDisponibles <= 5)
-                                                {
-                                                    <span class="badge bg-warning">POCOS CUPOS</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-success">DISPONIBLE</span>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                    else
-                    {
-                        <p class="text-muted">No hay clases registradas</p>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Botón para actualizar datos -->
-    <div class="text-center mb-4">
-        <button class="btn btn-primary btn-lg" @onclick="CargarDatos">
-            🔄 Actualizar Datos
+<div class="dashboard-wrapper animate-fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-neon fw-bold"><i class="bi bi-speedometer2"></i> PANEL DE CONTROL</h2>
+        <button class="btn btn-outline-neon btn-sm" @onclick="CargarDatos">
+            <i class="bi bi-arrow-clockwise"></i> Actualizar
         </button>
     </div>
-}
+
+    @if (cargando)
+    {
+        <div class="d-flex flex-column align-items-center justify-content-center" style="height: 400px;">
+            <div class="spinner-neon"></div>
+            <p class="mt-3 text-neon">Sincronizando datos...</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4 mb-5">
+            <div class="col-md-3">
+                <div class="stat-card-mini">
+                    <span class="label">CLIENTES</span>
+                    <div class="d-flex align-items-center gap-3">
+                        <h2 class="value">@totalClientes</h2>
+                        <i class="bi bi-people text-neon fs-3"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card-mini">
+                    <span class="label">RECAUDACIÓN</span>
+                    <div class="d-flex align-items-center gap-3">
+                        <h2 class="value">$@totalIngresos.ToString("N0")</h2>
+                        <i class="bi bi-currency-dollar text-neon fs-3"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card-mini">
+                    <span class="label">CLASES</span>
+                    <div class="d-flex align-items-center gap-3">
+                        <h2 class="value">@totalClases</h2>
+                        <i class="bi bi-calendar-check text-neon fs-3"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card-mini">
+                    <span class="label">RESERVAS</span>
+                    <div class="d-flex align-items-center gap-3">
+                        <h2 class="value">@totalReservaciones</h2>
+                        <i class="bi bi-bookmark-star text-neon fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="glass-panel p-4">
+                    <h5 class="mb-4 fw-bold"><i class="bi bi-star-fill text-neon"></i> CLASES MÁS POPULARES</h5>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Clase</th>
+                                    <th>Instructor</th>
+                                    <th class="text-center">Reservas</th>
+                                    <th class="text-center">Cupos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var clase in clasesPopulares)
+                                {
+                                    <tr>
+                                        <td class="fw-bold">@clase.NombreClase</td>
+                                        <td>@clase.Instructor</td>
+                                        <td class="text-center">
+                                            <span class="badge-reservas">@clase.TotalReservaciones</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge @GetCuposBadgeClass(clase.CuposDisponibles)">
+                                                @clase.CuposDisponibles
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="glass-panel p-4 h-100">
+                    <h5 class="mb-4 fw-bold"><i class="bi bi-pie-chart-fill text-neon"></i> INGRESOS POR TIPO</h5>
+                    <div class="income-list">
+                        @foreach (var ingreso in ingresosPorTipo)
+                        {
+                            <div class="income-item mb-3 p-3 rounded">
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-white-50">@ingreso.Tipo</span>
+                                    <span class="text-neon fw-bold">$@ingreso.Total.ToString("N2")</span>
+                                </div>
+                                <div class="progress mt-2" style="height: 5px; background: #333;">
+                                    <div class="progress-bar bg-neon" style="width: 70%"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    /* Estilos del Dashboard */
+    .dashboard-wrapper {
+        padding: 1rem;
+        color: white;
+    }
+
+    .text-neon {
+        color: #ccff00 !important;
+    }
+
+    .bg-neon {
+        background-color: #ccff00 !important;
+    }
+
+    /* Tarjetas Mini */
+    .stat-card-mini {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 1.5rem;
+        border-radius: 15px;
+        transition: 0.3s;
+    }
+
+        .stat-card-mini:hover {
+            border-color: #ccff00;
+            background: rgba(204, 255, 0, 0.02);
+        }
+
+        .stat-card-mini .label {
+            color: #888;
+            font-size: 0.75rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .stat-card-mini .value {
+            margin: 0;
+            font-weight: 800;
+            color: #fff;
+        }
+
+    /* Paneles de Vidrio */
+    .glass-panel {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
+    }
+
+    /* Tablas Personalizadas */
+    .custom-table {
+        border-collapse: separate;
+        border-spacing: 0 8px;
+    }
+
+        .custom-table thead th {
+            border: none;
+            color: #888;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .custom-table tbody tr {
+            background: rgba(255, 255, 255, 0.02);
+            transition: 0.2s;
+        }
+
+            .custom-table tbody tr:hover {
+                transform: scale(1.01);
+                background: rgba(204, 255, 0, 0.05);
+            }
+
+        .custom-table td {
+            padding: 1rem;
+            border: none;
+            vertical-align: middle;
+        }
+
+            .custom-table td:first-child {
+                border-radius: 10px 0 0 10px;
+            }
+
+            .custom-table td:last-child {
+                border-radius: 0 10px 10px 0;
+            }
+
+    .badge-reservas {
+        background: #ccff00;
+        color: #000;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-weight: bold;
+        font-size: 0.8rem;
+    }
+
+    /* Spinner Neón */
+    .spinner-neon {
+        width: 50px;
+        height: 50px;
+        border: 3px solid rgba(204, 255, 0, 0.1);
+        border-top: 3px solid #ccff00;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    .btn-outline-neon {
+        color: #ccff00;
+        border-color: #ccff00;
+    }
+
+        .btn-outline-neon:hover {
+            background: #ccff00;
+            color: #000;
+        }
+</style>
 
 @code {
+    // Mantengo tu lógica de C#, solo ajusto las clases para el nuevo diseño
     private bool cargando = true;
-
-    // Estadísticas generales
-    private int totalClientes = 0;
-    private int totalClases = 0;
-    private int totalReservaciones = 0;
-    private decimal totalIngresos = 0;
-
-    // Datos para reportes
-    private List<ReservacionPorEstado>? reservacionesPorEstado;
-    private List<IngresoPorTipo>? ingresosPorTipo;
-    private List<ClasePopular>? clasesPopulares;
-    private List<ClienteActivo>? clientesActivos;
-    private List<Clase>? estadoCupos;
+    private int totalClientes;
+    private int totalClases;
+    private int totalReservaciones;
+    private decimal totalIngresos;
+    private List<ReservacionPorEstado> reservacionesPorEstado = new();
+    private List<IngresoPorTipo> ingresosPorTipo = new();
+    private List<ClasePopular> clasesPopulares = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -364,141 +257,45 @@ else
     private async Task CargarDatos()
     {
         cargando = true;
+        await Task.Delay(500); // Efecto visual
 
-        try
-        {
-            // Estadísticas generales
-            totalClientes = await Db.Clientes.CountAsync();
-            totalClases = await Db.Clases.CountAsync();
-            totalReservaciones = await Db.Reservaciones
-                .Where(r => r.Estado != "Cancelada")
-                .CountAsync();
-            totalIngresos = await Db.Pagos.SumAsync(p => (decimal?)p.Monto) ?? 0;
+        totalClientes = await Db.Clientes.CountAsync();
+        totalClases = await Db.Clases.CountAsync();
+        totalReservaciones = await Db.Reservaciones.CountAsync();
+        totalIngresos = await Db.Pagos.SumAsync(p => p.Monto);
 
-            // Reservaciones por estado
-            reservacionesPorEstado = await Db.Reservaciones
-                .GroupBy(r => r.Estado)
-                .Select(g => new ReservacionPorEstado
-                {
-                    Estado = g.Key,
-                    Cantidad = g.Count()
-                })
-                .ToListAsync();
-
-            var totalRes = reservacionesPorEstado.Sum(x => x.Cantidad);
-            foreach (var item in reservacionesPorEstado)
+        ingresosPorTipo = await Db.Pagos
+            .GroupBy(p => p.TipoMembresia)
+            .Select(g => new IngresoPorTipo
             {
-                item.Porcentaje = totalRes > 0 ? (item.Cantidad * 100.0 / totalRes) : 0;
-            }
+                Tipo = g.Key,
+                Cantidad = g.Count(),
+                Total = g.Sum(p => p.Monto)
+            }).ToListAsync();
 
-            // Ingresos por tipo
-            ingresosPorTipo = await Db.Pagos
-                .GroupBy(p => p.TipoMembresia)
-                .Select(g => new IngresoPorTipo
-                {
-                    Tipo = g.Key,
-                    Cantidad = g.Count(),
-                    Total = g.Sum(p => p.Monto)
-                })
-                .ToListAsync();
+        clasesPopulares = await Db.Clases
+            .Select(c => new ClasePopular
+            {
+                NombreClase = c.NombreClase,
+                Instructor = c.Instructor,
+                TotalReservaciones = c.Reservaciones.Count(),
+                CuposDisponibles = c.CuposDisponibles
+            })
+            .OrderByDescending(c => c.TotalReservaciones)
+            .Take(5)
+            .ToListAsync();
 
-            // Top 5 clases más populares
-            clasesPopulares = await Db.Reservaciones
-                .Where(r => r.Estado != "Cancelada")
-                .GroupBy(r => new { r.IdClase, r.Clase!.NombreClase, r.Clase.Instructor })
-                .Select(g => new ClasePopular
-                {
-                    NombreClase = g.Key.NombreClase,
-                    Instructor = g.Key.Instructor,
-                    TotalReservaciones = g.Count()
-                })
-                .OrderByDescending(c => c.TotalReservaciones)
-                .Take(5)
-                .ToListAsync();
-
-            // Top 5 clientes más activos
-            clientesActivos = await Db.Clientes
-                .Select(c => new ClienteActivo
-                {
-                    NombreCompleto = c.Nombre + " " + c.Apellido,
-                    TotalReservaciones = c.Reservaciones!.Count(r => r.Estado != "Cancelada"),
-                    TotalPagado = c.Pagos!.Sum(p => (decimal?)p.Monto) ?? 0
-                })
-                .Where(c => c.TotalReservaciones > 0)
-                .OrderByDescending(c => c.TotalReservaciones)
-                .Take(5)
-                .ToListAsync();
-
-            // Estado de cupos
-            estadoCupos = await Db.Clases
-                .OrderBy(c => c.Horario)
-                .ToListAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error al cargar datos: {ex.Message}");
-        }
-        finally
-        {
-            cargando = false;
-        }
+        cargando = false;
     }
 
-    private string GetEstadoBadgeClass(string estado)
+    private string GetCuposBadgeClass(int cupos) => cupos switch
     {
-        return estado switch
-        {
-            "Confirmada" => "bg-success",
-            "Pendiente" => "bg-warning",
-            "Cancelada" => "bg-danger",
-            _ => "bg-secondary"
-        };
-    }
+        0 => "bg-danger",
+        <= 5 => "bg-warning text-dark",
+        _ => "bg-success"
+    };
 
-    private string GetTipoBadgeClass(string tipo)
-    {
-        return tipo switch
-        {
-            "Mensual" => "bg-primary",
-            "Anual" => "bg-success",
-            "Por Clase" => "bg-info",
-            _ => "bg-secondary"
-        };
-    }
-
-    private string GetCuposBadgeClass(int cupos)
-    {
-        if (cupos == 0) return "bg-danger";
-        if (cupos <= 5) return "bg-warning";
-        return "bg-success";
-    }
-
-    // Clases auxiliares para los reportes
-    private class ReservacionPorEstado
-    {
-        public string Estado { get; set; } = string.Empty;
-        public int Cantidad { get; set; }
-        public double Porcentaje { get; set; }
-    }
-
-    private class IngresoPorTipo
-    {
-        public string Tipo { get; set; } = string.Empty;
-        public int Cantidad { get; set; }
-        public decimal Total { get; set; }
-    }
-
-    private class ClasePopular
-    {
-        public string NombreClase { get; set; } = string.Empty;
-        public string Instructor { get; set; } = string.Empty;
-        public int TotalReservaciones { get; set; }
-    }
-
-    private class ClienteActivo
-    {
-        public string NombreCompleto { get; set; } = string.Empty;
-        public int TotalReservaciones { get; set; }
-        public decimal TotalPagado { get; set; }
-    }
+    private class ReservacionPorEstado { public string Estado { get; set; } = ""; public int Cantidad { get; set; } }
+    private class IngresoPorTipo { public string Tipo { get; set; } = ""; public decimal Total { get; set; } public int Cantidad { get; set; } }
+    private class ClasePopular { public string NombreClase { get; set; } = ""; public string Instructor { get; set; } = ""; public int TotalReservaciones { get; set; } public int CuposDisponibles { get; set; } }
 }

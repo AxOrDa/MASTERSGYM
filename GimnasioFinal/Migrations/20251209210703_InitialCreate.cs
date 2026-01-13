@@ -15,12 +15,12 @@ namespace GimnasioFinal.Migrations
                 name: "Clases",
                 columns: table => new
                 {
-                    IdClase = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    NombreClase = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Instructor = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Horario = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CuposDisponibles = table.Column<int>(type: "int", nullable: false)
+                    IdClase = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    NombreClase = table.Column<string>(type: "TEXT", nullable: false),
+                    Instructor = table.Column<string>(type: "TEXT", nullable: false),
+                    Horario = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    CuposDisponibles = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -31,13 +31,13 @@ namespace GimnasioFinal.Migrations
                 name: "Clientes",
                 columns: table => new
                 {
-                    IdCliente = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Nombre = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Apellido = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Correo = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Telefono = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    FechaRegistro = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    IdCliente = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Nombre = table.Column<string>(type: "TEXT", nullable: false),
+                    Apellido = table.Column<string>(type: "TEXT", nullable: false),
+                    Correo = table.Column<string>(type: "TEXT", nullable: false),
+                    Telefono = table.Column<string>(type: "TEXT", nullable: false),
+                    FechaRegistro = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -48,12 +48,12 @@ namespace GimnasioFinal.Migrations
                 name: "Pagos",
                 columns: table => new
                 {
-                    IdPago = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    IdCliente = table.Column<int>(type: "int", nullable: false),
+                    IdPago = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    IdCliente = table.Column<int>(type: "INTEGER", nullable: false),
                     Monto = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
-                    FechaPago = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    TipoMembresia = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    FechaPago = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    TipoMembresia = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -70,12 +70,12 @@ namespace GimnasioFinal.Migrations
                 name: "Reservaciones",
                 columns: table => new
                 {
-                    IdReservacion = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    IdCliente = table.Column<int>(type: "int", nullable: false),
-                    IdClase = table.Column<int>(type: "int", nullable: false),
-                    FechaReservacion = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Estado = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    IdReservacion = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    IdCliente = table.Column<int>(type: "INTEGER", nullable: false),
+                    IdClase = table.Column<int>(type: "INTEGER", nullable: false),
+                    FechaReservacion = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Estado = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {

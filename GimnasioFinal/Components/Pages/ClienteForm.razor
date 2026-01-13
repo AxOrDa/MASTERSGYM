@@ -1,48 +1,135 @@
 ﻿@page "/clientes/create"
 @page "/clientes/edit/{Id:int}"
+@using GimnasioFinal.Models
+@using GimnasioFinal.Data
 @inject GimnasioContext Db
 @inject NavigationManager Nav
 @rendermode InteractiveServer
 
+<div class="dashboard-wrapper animate-fade-in">
+    <div class="container" style="max-width: 600px;">
+        <div class="d-flex align-items-center mb-4">
+            <button class="btn-back me-3" @onclick="Cancelar"><i class="bi bi-arrow-left"></i></button>
+            <h2 class="text-neon fw-bold m-0">@(IsEdit ? "EDITAR CLIENTE" : "NUEVO CLIENTE")</h2>
+        </div>
 
-<h3>@(IsEdit ? "Editar Cliente" : "Nuevo Cliente")</h3>
+        <div class="glass-panel p-4">
+            <EditForm Model="clienteModel" OnValidSubmit="Guardar">
+                <DataAnnotationsValidator />
 
-<EditForm Model="clienteModel" OnValidSubmit="Guardar">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="label-neon">NOMBRE</label>
+                        <InputText class="form-control-dark" @bind-Value="clienteModel.Nombre" placeholder="Ej: Juan" />
+                        <ValidationMessage For="@(() => clienteModel.Nombre)" class="text-danger small" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="label-neon">APELLIDO</label>
+                        <InputText class="form-control-dark" @bind-Value="clienteModel.Apellido" placeholder="Ej: Pérez" />
+                        <ValidationMessage For="@(() => clienteModel.Apellido)" class="text-danger small" />
+                    </div>
+                </div>
 
-    <div class="mb-3">
-        <label class="form-label">Nombre</label>
-        <InputText class="form-control" @bind-Value="clienteModel.Nombre" />
-        <ValidationMessage For="@(() => clienteModel.Nombre)" />
+                <div class="mb-3">
+                    <label class="label-neon">CORREO ELECTRÓNICO</label>
+                    <InputText class="form-control-dark" @bind-Value="clienteModel.Correo" placeholder="correo@ejemplo.com" />
+                    <ValidationMessage For="@(() => clienteModel.Correo)" class="text-danger small" />
+                </div>
+
+                <div class="mb-4">
+                    <label class="label-neon">TELÉFONO</label>
+                    <InputText class="form-control-dark" @bind-Value="clienteModel.Telefono" placeholder="Mínimo 8 dígitos" />
+                    <ValidationMessage For="@(() => clienteModel.Telefono)" class="text-danger small" />
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-neon py-2">
+                        <i class="bi bi-check-lg"></i> GUARDAR CAMBIOS
+                    </button>
+                </div>
+            </EditForm>
+        </div>
     </div>
+</div>
 
-    <div class="mb-3">
-        <label class="form-label">Apellido</label>
-        <InputText class="form-control" @bind-Value="clienteModel.Apellido" />
-        <ValidationMessage For="@(() => clienteModel.Apellido)" />
-    </div>
+<style>
+    .dashboard-wrapper {
+        padding: 40px 20px;
+        min-height: 90vh;
+    }
 
-    <div class="mb-3">
-        <label class="form-label">Correo</label>
-        <InputText class="form-control" @bind-Value="clienteModel.Correo" />
-        <ValidationMessage For="@(() => clienteModel.Correo)" />
-    </div>
+    .text-neon {
+        color: #ccff00;
+        text-shadow: 0 0 10px rgba(204, 255, 0, 0.4);
+    }
 
-    <div class="mb-3">
-        <label class="form-label">Teléfono</label>
-        <InputText class="form-control" @bind-Value="clienteModel.Telefono" />
-        <ValidationMessage For="@(() => clienteModel.Telefono)" />
-    </div>
+    .glass-panel {
+        background: rgba(30, 30, 30, 0.8);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 20px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+    }
 
-    <button type="submit" class="btn btn-success me-2">Guardar</button>
-    <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
-</EditForm>
+    .label-neon {
+        color: #ccff00;
+        font-size: 0.75rem;
+        font-weight: bold;
+        letter-spacing: 1.5px;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .form-control-dark {
+        background: rgba(0,0,0,0.3);
+        border: 1px solid #444;
+        color: white;
+        padding: 12px;
+        border-radius: 10px;
+        width: 100%;
+        transition: 0.3s;
+    }
+
+        .form-control-dark:focus {
+            border-color: #ccff00;
+            background: rgba(0,0,0,0.5);
+            box-shadow: 0 0 10px rgba(204,255,0,0.2);
+            outline: none;
+        }
+
+    .btn-neon {
+        background: #ccff00;
+        color: #000;
+        font-weight: 800;
+        border: none;
+        border-radius: 10px;
+        transition: 0.3s;
+    }
+
+        .btn-neon:hover {
+            background: #fff;
+            box-shadow: 0 0 20px #ccff00;
+            transform: translateY(-2px);
+        }
+
+    .btn-back {
+        background: none;
+        border: 1px solid #444;
+        color: #fff;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        transition: 0.3s;
+    }
+
+        .btn-back:hover {
+            border-color: #ccff00;
+            color: #ccff00;
+        }
+</style>
 
 @code {
-    [Parameter]
-    public int? Id { get; set; }
-
+    [Parameter] public int? Id { get; set; }
     private Cliente clienteModel = new Cliente();
     private bool IsEdit => Id.HasValue && Id.Value > 0;
 
@@ -51,37 +138,22 @@
         if (IsEdit)
         {
             var c = await Db.Clientes.FindAsync(Id!.Value);
-            if (c != null)
-            {
-                clienteModel = c;
-            }
-            else
-            {
-                // si no existe, redirigir a lista
-                Nav.NavigateTo("/clientes");
-            }
+            if (c != null) clienteModel = c;
+            else Nav.NavigateTo("/clientes");
         }
     }
 
     private async Task Guardar()
     {
-        if (IsEdit)
-        {
-            // update
-            Db.Clientes.Update(clienteModel);
-        }
+        if (IsEdit) Db.Clientes.Update(clienteModel);
         else
         {
             clienteModel.FechaRegistro = DateTime.Now;
             await Db.Clientes.AddAsync(clienteModel);
         }
-
         await Db.SaveChangesAsync();
         Nav.NavigateTo("/clientes");
     }
 
-    private void Cancelar()
-    {
-        Nav.NavigateTo("/clientes");
-    }
+    private void Cancelar() => Nav.NavigateTo("/clientes");
 }

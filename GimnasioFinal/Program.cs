@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<GimnasioContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("ConexionGimnasio")));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
